@@ -1,0 +1,5 @@
+0;Alexandre;2144544343;Av. Pres. Kennedy, 44;Empresário;
+1;Paulo;1112457634;Av. Pres. Kennedy, 44;Comerciante;
+2;Paulo;1121323233;Av. Paulista, 2212;Comerciante;
+3;Paulo;1121323233;Av. Paulista, 2212;Comerciante;
+4;Adriano;1121323233;Av. Pres. Kennedy, 44;Analista de Sistemas;

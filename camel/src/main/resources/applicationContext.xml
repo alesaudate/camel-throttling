@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:amq="http://activemq.apache.org/schema/core" xmlns:camel="http://camel.apache.org/schema/spring"
+	xmlns:cxf="http://camel.apache.org/schema/cxf" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:jaxrs="http://cxf.apache.org/jaxrs"
+	xsi:schemaLocation="
+	   http://cxf.apache.org/jaxrs http://cxf.apache.org/schemas/jaxrs.xsd
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+       http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd">
+
+	<bean id="processadorRegistros"
+		class="br.com.alesaudate.tdc.camel.throttling.model.ProcessadorRegistro" />
+
+	<bean id="processadorErros"
+		class="br.com.alesaudate.tdc.camel.throttling.model.ProcessadorErros" />
+
+	<amq:broker>
+		<amq:persistenceAdapter>
+			<amq:amqPersistenceAdapter syncOnWrite="false"
+				directory="${activemq.base}/data" maxFileLength="20 mb" />
+		</amq:persistenceAdapter>
+
+		<!-- The transport connectors ActiveMQ will listen to -->
+		<amq:transportConnectors>
+			<amq:transportConnector name="openwire"
+				uri="tcp://localhost:61616" />
+			<amq:transportConnector name="stomp"
+				uri="stomp://localhost:61613" />
+		</amq:transportConnectors>
+	</amq:broker>
+
+	<!-- configure the camel activemq component to use the current broker -->
+	<!-- create the activemq component so that we can use the activemq uri -->
+	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
+		<property name="connectionFactory" ref="poolConnectionFactory" />
+		<property name="transacted" value="true" />
+		<property name="transactionManager" ref="jmsTransactionManager" />
+	</bean>
+
+	<bean id="jmsTransactionManager"
+		class="org.springframework.jms.connection.JmsTransactionManager">
+		<property name="connectionFactory" ref="poolConnectionFactory" />
+	</bean>
+
+	<bean id="poolConnectionFactory" class="org.apache.activemq.pool.PooledConnectionFactory">
+		<property name="maxConnections" value="8" />
+		<property name="connectionFactory" ref="jmsConnectionFactory" />
+	</bean>
+
+	<bean id="jmsConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL"
+			value="vm://localhost?broker.persistent=true&amp;broker.useJmx=true" />
+	</bean>
+
+	<camel:camelContext>
+		<camel:route>
+			<camel:from uri="file:src/data" />
+			<camel:split streaming="true">
+				<camel:tokenize token="\n" />
+				<camel:to uri="activemq:personnel.records" />
+			</camel:split>
+		</camel:route>
+
+
+		<camel:route>
+			<camel:from uri="activemq:personnel.records" />
+			<camel:throttle timePeriodMillis="5000">
+				<camel:constant>1</camel:constant>
+				<camel:transacted>
+					<camel:process ref="processadorRegistros" />
+					<camel:to
+						uri="cxf://http://localhost:8090/servico?wsdlURL=RegistrosService.wsdl&amp;serviceClass=br.com.alesaudate.tdc.camel.throttling.RegistrosService"/>
+				</camel:transacted>
+			</camel:throttle>
+		</camel:route>
+
+	</camel:camelContext>
+
+</beans>
