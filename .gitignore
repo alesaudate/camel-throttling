@@ -5,6 +5,10 @@ target/
 .project
 .settings
 
+**/target/
+**/.classpath
+**/.project
+**/.settings
 
 # Package Files #
 *.jar
