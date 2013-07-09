@@ -1,10 +1,9 @@
 *.class
-**/target
-**/bin
 
-*.project
-*.settings
-*.classpath
+target/
+.classpath
+.project
+.settings
 
 
 # Package Files #
